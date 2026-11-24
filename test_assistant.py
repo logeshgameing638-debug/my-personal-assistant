@@ -137,6 +137,17 @@ class AssistantTests(unittest.TestCase):
         self.assertEqual(content[1]['type'], 'image_url')
         self.assertTrue(content[1]['image_url']['url'].startswith('data:image/png;base64,'))
 
+    def test_vision_keeps_recent_chat_context(self):
+        history = [{'role': 'user', 'content': 'Remember the word mango'},
+                   {'role': 'assistant', 'content': 'Got it: mango'}]
+        with patch('urllib.request.urlopen', return_value=fake_response('mango')) as call:
+            get_reply('not-a-real-key', load_settings(), history, 'Which word?',
+                      uploads=[('a.png', b'0' * 10)])
+        data = json.loads(call.call_args.args[0].data)
+        roles = [m['role'] for m in data['messages']]
+        self.assertEqual(roles, ['system', 'user', 'assistant', 'user'])
+        self.assertEqual(data['messages'][1]['content'], 'Remember the word mango')
+
     def test_big_image_rejected(self):
         with self.assertRaises(ChatError):
             prepare_upload('big.jpg', b'0' * 3_500_000)
