@@ -1,4 +1,5 @@
-"""Run with: py -m streamlit run app.py"""
+"""ARIA - your personal AI assistant. Run with: py -m streamlit run app.py"""
+import hashlib
 import inspect
 import json
 import os
@@ -6,26 +7,68 @@ from pathlib import Path
 import streamlit as st
 from assistant import (ALL_EXTENSIONS, ChatError, get_reply, load_settings,
                        research_reply, speak_text, transcribe_audio)
-from portfolio import (PortfolioError, add_holding, load_portfolio,
-                       pnl_table, portfolio_summary_text, remove_holding)
+import portfolio
+from portfolio import (PortfolioError, add_holding, allocation, holdings_csv,
+                       load_portfolio, pnl_table, portfolio_summary_text,
+                       remove_holding, transactions_csv)
 
-st.set_page_config(page_title="My Personal Assistant", page_icon="💬", layout="centered")
+CHATS_PATH = Path(__file__).with_name("chats.json")
+
+st.set_page_config(page_title="Aria - Personal AI Assistant", page_icon="✨", layout="centered")
+
+# Selective premium styling on top of the dark theme from .streamlit/config.toml.
+st.markdown("""<style>
+[data-testid="stChatMessage"] {border-radius: 14px; padding: 10px 14px; margin-bottom: 6px;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);}
+section[data-testid="stSidebar"] {background: linear-gradient(180deg, #101623 0%, #0b0f17 100%);}
+section[data-testid="stSidebar"] .stButton button {border-radius: 10px;}
+.stButton button {border-radius: 10px;}
+[data-testid="stExpander"] {border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);}
+</style>""", unsafe_allow_html=True)
+
 try:
     settings = load_settings()
 except (OSError, ValueError, json.JSONDecodeError):
     st.error("Cannot read settings.json. Restore the original file or fix its name, personality and model fields.")
     st.stop()
 
-# This memory belongs only to the open browser session. It is not saved to disk.
+
+def load_chats():
+    try:
+        rows = json.loads(CHATS_PATH.read_text(encoding="utf-8"))
+        if isinstance(rows, list):
+            return [m for m in rows if isinstance(m, dict) and m.get("role") in ("user", "assistant")
+                    and isinstance(m.get("content"), str)]
+    except (OSError, ValueError):
+        pass
+    return []
+
+
+def save_chats(messages):
+    try:
+        CHATS_PATH.write_text(json.dumps(messages, indent=1), encoding="utf-8")
+    except OSError:
+        pass
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def cached_price(symbol):
+    """One Yahoo call per symbol per 2 minutes, so reruns do not hammer the quote page."""
+    return portfolio.fetch_price(symbol)
+
+
+# Session memory belongs only to the open browser session unless saving is switched on.
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
 
 def forget_key():
     st.session_state["groq_key"] = ""
 
 
 with st.sidebar:
-    st.title("Your settings")
+    st.title("✨ ARIA")
+    st.caption("Your personal AI assistant")
     st.caption("Keep your Groq account on the Free plan. Never add billing for this app.")
     pasted_key = st.text_input("Groq API key", type="password", key="groq_key",
                                help="Paste it here on your own laptop, never in a message or GitHub file.")
@@ -41,34 +84,71 @@ with st.sidebar:
     chat_model = model_choices[picked]
     research_on = st.checkbox("Research the web first (slower, basic)")
     voice_on = st.checkbox("Read answers aloud")
-    st.caption("Images are always read by " + settings["vision_model"] + ". Voice uses free Whisper (in) and Orpheus (out).")
-    st.caption("You can attach: text, csv, json, code, PDF, images (png, jpg, webp). Not Word, Excel or zip files yet.")
-    st.caption("Change the name and personality in settings.json, then restart the app.")
-    if st.button("Clear conversation", use_container_width=True):
+    voice_name = "troy"
+    if voice_on:
+        voice_name = st.selectbox("Voice", ["troy", "hannah", "austin"])
+    st.caption("Images are always read by " + settings["vision_model"] + ". Voice uses free Whisper (in) and Orpheus (out, English only).")
+    st.caption("You can attach: text, csv, json, code, Word (.docx), PDF, images (png, jpg, webp). Not Excel or zip files yet.")
+    st.divider()
+    save_chats_on = st.checkbox("Save my chats on this laptop", value=False,
+                                help="Off: chats vanish when the app restarts. On: stored in chats.json on this laptop only, never in the repo.")
+    if save_chats_on:
+        if not st.session_state.get("chats_loaded"):
+            st.session_state.messages = load_chats()
+            st.session_state["chats_loaded"] = True
+        if st.button("Delete my saved chats", width="stretch"):
+            CHATS_PATH.unlink(missing_ok=True)
+            st.session_state.messages = []
+            st.session_state.pop("last_audio", None)
+            st.rerun()
+    if st.button("Clear conversation", width="stretch"):
         st.session_state.messages = []
         st.session_state.pop("last_audio", None)
+        if save_chats_on:
+            save_chats([])
         st.rerun()
-    st.button("Forget pasted key", use_container_width=True, on_click=forget_key)
+    st.button("Forget pasted key", width="stretch", on_click=forget_key)
     st.caption("An environment-variable key stays until you remove it from your computer.")
+    st.divider()
+    st.subheader("Status")
+    try:
+        holding_count = len(load_portfolio())
+    except PortfolioError:
+        holding_count = 0
+    st.caption("Groq key: " + ("ready" if key else "missing")
+               + "  |  Brain: " + chat_model
+               + "  |  Research: " + ("on" if research_on else "off"))
+    st.caption("Holdings: " + str(holding_count)
+               + "  |  Chat this session: " + str(len(st.session_state.messages)) + " messages"
+               + "  |  Chat saving: " + ("on" if save_chats_on else "off"))
 
-st.title(settings["name"] + ", your personal assistant")
+st.title("✨ " + settings["name"] + ", your personal assistant")
 st.caption("Chat, files, images, voice and basic web research. Runs on your laptop, with online answers from Groq.")
 st.info("No full laptop control, account access or background listening. Attachments, voice and web results go to Groq only to answer that message. Do not send secrets or sensitive personal data.")
 if not st.session_state.messages:
     st.markdown("### What would you like help with?")
     st.write("Try: Explain Python simply, summarize an attached PDF, describe an image, or tick Research and ask about today's news.")
 
-# --- Voice input: record, then it becomes your next message ---
+# --- Voice input: record once, it becomes your next message ---
 voice_prompt = ""
 if hasattr(st, "audio_input"):
     audio = st.audio_input("Speak instead of typing (optional)")
-    if audio is not None and key and free_ok:
-        try:
-            with st.spinner("Listening..."):
-                voice_prompt = transcribe_audio(key, audio.getvalue(), audio.name or "speech.wav")
-            st.success("Heard: " + voice_prompt)
-        except ChatError as error:
-            st.error(str(error))
+    if audio is not None:
+        blob = audio.getvalue()
+        heard_hash = hashlib.md5(blob).hexdigest()
+        if blob and heard_hash != st.session_state.get("heard_hash"):
+            if key and free_ok:
+                try:
+                    with st.spinner("Listening..."):
+                        st.session_state["voice_prompt"] = transcribe_audio(key, blob, audio.name or "speech.wav")
+                    st.session_state["heard_hash"] = heard_hash
+                    st.success("Heard: " + st.session_state["voice_prompt"])
+                except ChatError as error:
+                    st.session_state["heard_hash"] = heard_hash
+                    st.error(str(error))
+            else:
+                st.caption("Paste your Groq key and tick the Free-plan box above to use voice.")
+    voice_prompt = st.session_state.pop("voice_prompt", "")
 
 # --- Laptop files: only files you point the app at ---
 with st.expander("Laptop files (only what you choose)"):
@@ -107,7 +187,8 @@ with st.expander("My portfolio (analysis only, no trades)"):
     new_symbol = col1.text_input("Symbol", placeholder="RELIANCE.NS", key="pf_symbol")
     new_qty = col2.text_input("Quantity", placeholder="10", key="pf_qty")
     new_buy = col3.text_input("Buy price", placeholder="2500", key="pf_buy")
-    if st.button("Add / update holding"):
+    st.caption("Adding a symbol you already hold merges the two buys: quantities add and the buy price becomes the weighted average.")
+    if st.button("Add to my holdings"):
         try:
             holdings = add_holding(new_symbol, new_qty, new_buy)
             st.session_state.pop("pf_result", None)
@@ -117,25 +198,43 @@ with st.expander("My portfolio (analysis only, no trades)"):
     if holdings:
         if st.button("Refresh prices and P&L"):
             with st.spinner("Getting prices..."):
-                st.session_state["pf_result"] = pnl_table(holdings)
+                st.session_state["pf_result"] = pnl_table(holdings, price_fn=cached_price)
         if st.session_state.get("pf_result"):
             lines, totals = st.session_state["pf_result"]
-            for line in lines:
-                if line["price"] is None:
-                    st.write("%s — %s shares @ %.2f — live price unavailable" % (
-                        line["symbol"], line["qty"], line["buy_price"]))
-                else:
-                    st.write("%s — %s shares @ %.2f — now %.2f — P&L %+.2f" % (
-                        line["symbol"], line["qty"], line["buy_price"], line["price"], line["pnl"]))
-            st.write("**Total invested %.2f — value %.2f — P&L %+.2f**" % (
-                totals["invested"], totals["current"], totals["pnl"]))
+            st.dataframe([{ "Symbol": l["symbol"], "Qty": l["qty"], "Buy": round(l["buy_price"], 2),
+                            "Now": (round(l["price"], 2) if l["price"] is not None else "unavailable"),
+                            "P&L": (round(l["pnl"], 2) if l["pnl"] is not None else "—"),
+                            "P&L %": (round(l["pnl_pct"], 1) if l["pnl_pct"] is not None else "—")}
+                          for l in lines], width="stretch", hide_index=True)
+            st.write("**Priced holdings only — invested %.2f, value %.2f, P&L %+.2f (%s)**" % (
+                totals["invested"], totals["current"], totals["pnl"],
+                ("%+.1f%%" % totals["pnl_pct"]) if totals["pnl_pct"] is not None else "—"))
             if totals["missing"]:
-                st.caption("No live price for: " + ", ".join(totals["missing"]) + ". Use NSE symbols like RELIANCE.NS.")
+                st.warning("No live price for: " + ", ".join(totals["missing"])
+                           + ". These are excluded from the totals above - the totals are not a loss on them. Use NSE symbols like RELIANCE.NS.")
+            chart = allocation(lines)
+            if len(chart) > 1:
+                st.caption("Where your money is (holdings with a live price)")
+                st.bar_chart(chart)
             st.caption("The button below sends your holdings summary to Groq for analysis.")
             if st.button("Ask the assistant about my portfolio"):
                 st.session_state["queued_prompt"] = (
-                    portfolio_summary_text(holdings)
+                    portfolio_summary_text(holdings, price_fn=cached_price)
                     + "\n\nPlease analyze this simply: what looks strong, what looks weak, and general learning points. Not financial advice.")
+            dl1, dl2 = st.columns(2)
+            dl1.download_button("Download holdings (CSV)", holdings_csv(holdings),
+                                file_name="holdings.csv", mime="text/csv", width="stretch")
+            dl2.download_button("Download activity log (CSV)", transactions_csv(),
+                                file_name="transactions.csv", mime="text/csv", width="stretch")
+            with st.expander("Activity log (starts from this upgrade; older buys are not in it)"):
+                log = portfolio.load_transactions()
+                if log:
+                    for row in log[-10:][::-1]:
+                        st.caption("%s — %s %s x%s @ %s" % (row.get("ts", ""), row.get("kind", ""),
+                                                            row.get("symbol", ""), row.get("qty", ""),
+                                                            row.get("buy_price", "")))
+                else:
+                    st.caption("No activity yet.")
         else:
             st.write(", ".join(r["symbol"] for r in holdings) + " — press Refresh prices and P&L.")
         drop = st.selectbox("Remove a holding", [""] + [r["symbol"] for r in holdings])
@@ -147,10 +246,22 @@ with st.expander("My portfolio (analysis only, no trades)"):
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-if st.session_state.get("last_audio"):
+if st.session_state.get("last_audio") and not st.session_state.get("audio_played"):
     st.audio(st.session_state["last_audio"], format="audio/wav", autoplay=True)
+    st.session_state["audio_played"] = True
 
-st.caption("Recent chat is sent to Groq for context. Older messages may be left out. Restarting or losing the session clears chat.")
+if len(st.session_state.messages) >= 2 and key and free_ok:
+    if st.button("Regenerate last answer"):
+        last_pair = st.session_state.messages[-2:]
+        if [m["role"] for m in last_pair] == ["user", "assistant"]:
+            st.session_state.messages = st.session_state.messages[:-2]
+            if save_chats_on:
+                save_chats(st.session_state.messages)
+            st.session_state["queued_prompt"] = last_pair[0]["content"]
+            st.session_state.pop("last_audio", None)
+            st.rerun()
+
+st.caption("Recent chat is sent to Groq for context. Older messages may be left out. Restarting clears chat unless saving is on.")
 
 input_kwargs = {"placeholder": "Message your assistant", "max_chars": 2000,
                 "disabled": not key or not free_ok}
@@ -178,8 +289,8 @@ if not prompt and queued:
 if not prompt and voice_prompt:
     prompt = voice_prompt
 
-# A file chosen in Laptop files joins this message.
-path_attachment = st.session_state.pop("path_attachment", None)
+# A file chosen in Laptop files joins this message. It stays attached until a message actually goes.
+path_attachment = st.session_state.get("path_attachment")
 if path_attachment and (prompt or uploads):
     uploads = uploads + [path_attachment]
 
@@ -188,24 +299,39 @@ if prompt or uploads:
         prompt = "Please look at the attached file(s) and describe or summarize them."
     with st.chat_message("user"):
         st.markdown(prompt)
-        for name, _ in uploads:
-            st.caption("Attached: " + name)
-    try:
-        with st.spinner("Thinking..."):
-            if research_on:
-                reply = research_reply(key, settings, st.session_state.messages, prompt)
+        for name, data in uploads:
+            lower = name.lower()
+            if lower.endswith((".png", ".jpg", ".jpeg", ".webp")) and len(data) <= 3_000_000:
+                st.image(data, caption=name, width=220)
             else:
-                reply = get_reply(key, settings, st.session_state.messages, prompt, uploads, model=chat_model)
-            voice_audio = None
-            if voice_on:
-                try:
-                    voice_audio = speak_text(key, reply)
-                except ChatError as voice_error:
-                    st.caption(str(voice_error))
+                st.caption("Attached: " + name)
+    try:
+        if research_on:
+            with st.spinner("Researching..."):
+                reply = research_reply(key, settings, st.session_state.messages, prompt, uploads)
+        else:
+            placeholder = st.empty()
+            pieces = []
+
+            def on_token(piece):
+                pieces.append(piece)
+                placeholder.markdown("".join(pieces) + " ▌")
+
+            reply = get_reply(key, settings, st.session_state.messages, prompt, uploads,
+                              model=chat_model, on_token=on_token)
+            placeholder.empty()
+        voice_audio = None
+        if voice_on:
+            try:
+                voice_audio = speak_text(key, reply, voice=voice_name)
+            except ChatError as voice_error:
+                st.caption(str(voice_error))
     except ChatError as error:
         st.error(str(error))
         st.caption("Your message was not added to memory. You can send it again.")
     else:
+        if path_attachment and path_attachment in uploads:
+            st.session_state.pop("path_attachment", None)
         shown = prompt
         if uploads:
             shown += "\n\n" + " ".join("[" + name + "]" for name, _ in uploads)
@@ -213,8 +339,11 @@ if prompt or uploads:
             {"role": "user", "content": shown}, {"role": "assistant", "content": reply}])
         # Bound session memory too, so very long chats do not grow forever.
         st.session_state.messages = st.session_state.messages[-40:]
+        if save_chats_on:
+            save_chats(st.session_state.messages)
         if voice_audio:
             st.session_state["last_audio"] = voice_audio
+            st.session_state["audio_played"] = False
         else:
             st.session_state.pop("last_audio", None)
         st.rerun()
