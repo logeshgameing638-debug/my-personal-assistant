@@ -1,2 +1,2 @@
-streamlit>=1.50,<2
+streamlit>=1.61,<2
 pypdf>=4,<8
