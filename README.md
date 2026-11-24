@@ -2,7 +2,7 @@
 
 A small Python chat app for your Windows laptop. Its starting name is Aria. You can change the name and personality in one settings file.
 
-This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics, writes code and suggests plans. Replies stream onto the screen as they are written. You can attach text files, Word documents, PDFs and images, talk to it by voice, hear answers read aloud, run basic web research, read files you point it at on your laptop, and track a stock portfolio (analysis only, no trades). You can switch between three free Groq models in the sidebar, and if one is unavailable the app tries another free model automatically. It does not control your computer, open your accounts, listen in the background or send reminders.
+This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics, writes code and suggests plans. Replies stream onto the screen as they are written. You can attach text files, Word documents, PDFs and images, talk to it by voice, hear answers read aloud, run basic web research, read files you point it at on your laptop, and track a stock portfolio (analysis only, no trades). The app has six pages in the left menu: **Chat**, **Research**, **Files**, **Voice**, **Portfolio** and **Settings**. You can switch between three free Groq models on the Settings page, and if one is unavailable the app tries another free model automatically. It does not control your computer, open your accounts, listen in the background or send reminders.
 
 ## Cost and privacy first
 
@@ -52,39 +52,39 @@ Next time, open the folder and double-click `START.bat`. Or run the second comma
 1. Open https://console.groq.com/ in your laptop browser and create an account or sign in.
 2. Open **Settings > Billing** and confirm the plan is **Free ($0)**. Do not add payment details or upgrade. The plan page is https://console.groq.com/settings/billing/plans.
 3. Open **API Keys** from the Groq menu. Choose **Create API Key** and give it a name such as Personal Assistant.
-4. Copy the new key directly into the **Groq API key** password box in the app's left sidebar. Keep it private. Do not paste it into the source files or a message to anyone.
-5. Tick **I checked: my Groq account is on the Free plan** in the app. Start chatting.
+4. Copy the new key directly into the **Groq API key** password box on the app's **Settings** page. Keep it private. Do not paste it into the source files or a message to anyone.
+5. Tick **I checked: my Groq account is on the Free plan** on the same page. Open the **Chat** page and start chatting.
 
 Already have a Groq key? Use it only after checking that its account/organization is on the Free plan. If your key is lost, create a new one and revoke the old one in Groq. Never ask someone else to send you their key.
 
-The app also accepts `GROQ_API_KEY` from your computer's environment. This is optional; beginners should use the sidebar. If both exist, the pasted key wins. Forget pasted key does not remove an environment variable. The app does not load `.env` files.
+The app also accepts `GROQ_API_KEY` from your computer's environment. This is optional; beginners should use the Settings page. If both exist, the pasted key wins. Forget pasted key does not remove an environment variable. The app does not load `.env` files.
 
 ## Attachments and model choice
 
 - Use the paperclip in the chat box to attach files: text, markdown, csv, json, code, Word (.docx text), PDF (first 20 pages of text) and images (png, jpg, webp, up to 3 per message, each under 3 MB).
 - Excel and zip files are not supported yet. Copy their text into a .txt file and attach that instead.
 - A photo-only PDF has no readable text and cannot be read.
-- The **AI brain** box in the sidebar switches between Fast (`openai/gpt-oss-20b`), Smart (`openai/gpt-oss-120b`) and Qwen 3.8 (`qwen/qwen3.8-27b`, good for many languages). Images are always read by the vision model `qwen/qwen3.8-27b`. All are on Groq's Free plan when this project was made.
+- The **AI brain** box on the Settings page switches between Fast (`openai/gpt-oss-20b`), Smart (`openai/gpt-oss-120b`) and Qwen 3.8 (`qwen/qwen3.8-27b`, good for many languages). Images are always read by the vision model `qwen/qwen3.8-27b`. All are on Groq's Free plan when this project was made.
 - Answers stream as they are written. Long answers (like full code) can take up to a minute. If the free limit still cuts an answer, send `continue` and the assistant goes on.
 - **Regenerate last answer** removes the last exchange and asks again. Attachments are not re-sent with a regenerated question.
 - If the model you picked is not available to your key, the app automatically tries the other free models before giving up.
 
 ## Voice
 
-- Press **Speak instead of typing**, talk, then stop. Your words become the next message. Each recording is transcribed once; it is not re-sent on every screen refresh.
-- Tick **Read answers aloud** to hear replies, and pick one of the three voices (troy, hannah, austin). Voice uses Groq's free Whisper and Orpheus models; free limits apply, the voices speak English only, and long replies are read only up to about the first 1200 characters.
+- On the **Voice** page, press **Record a message**, talk, then stop. Your words appear as an editable transcript; press **Send as my next chat message** to use it in Chat. Each recording is transcribed once; it is not re-sent on every screen refresh.
+- Tick **Read chat answers aloud** on the Voice page to hear replies, and pick one of the three voices (troy, hannah, austin). Voice uses Groq's free Whisper and Orpheus models; free limits apply, the voices speak English only, and long replies are read only up to about the first 1200 characters.
 
 ## Web research
 
-Tick **Research the web first** in the sidebar before sending a question. It is slower and uses more of the free limits. The answer ends with the sources it actually used. Untick it for normal chat.
+Open the **Research** page, type a question and press **Research this question**. It is slower and uses more of the free limits. The answer ends with the sources it actually used. Press **Save this exchange to my chat history** to continue from it in Chat.
 
 ## Laptop files
 
-In **Laptop files**, type a path such as `C:\Users\vijay\Documents`. The app lists that folder, or reads one file you choose when you press **Attach this file to my next message**. It never changes, moves or deletes anything.
+On the **Files** page, type a path such as `C:\Users\vijay\Documents`. The app lists that folder, or reads one file you choose when you press **Attach this file to my next message**. It never changes, moves or deletes anything.
 
 ## Portfolio
 
-In **My portfolio**, add holdings as symbol, quantity and buy price (use NSE symbols like `RELIANCE.NS`). Adding a symbol you already hold **merges** the buys: quantities add up and the buy price becomes the weighted average - nothing is silently overwritten. Press **Refresh prices and P&L** for live values. If a live price is missing, that holding is excluded from the totals and clearly marked; a missing price is never shown as a loss. The panel also shows percentage returns, an allocation chart, and CSV downloads of your holdings and the activity log. The activity log starts from this upgrade - buys you made before it are not in it, and the app never invents past trades. Your original `portfolio.json` is copied once to `portfolio.backup.json` before the first change. **Ask the assistant about my portfolio** sends the holdings summary to Groq for a simple analysis. This is not financial advice and cannot place trades.
+On the **Portfolio** page, add holdings as symbol, quantity and buy price (use NSE symbols like `RELIANCE.NS`). Adding a symbol you already hold **merges** the buys: quantities add up and the buy price becomes the weighted average - nothing is silently overwritten. Press **Refresh prices and P&L** for live values. If a live price is missing, that holding is excluded from the totals and clearly marked; a missing price is never shown as a loss. The panel also shows percentage returns, an allocation chart, and CSV downloads of your holdings and the activity log. The activity log starts from this upgrade - buys you made before it are not in it, and the app never invents past trades. Your original `portfolio.json` is copied once to `portfolio.backup.json` before the first change. **Ask the assistant about my portfolio** sends the holdings summary to Groq for a simple analysis. This is not financial advice and cannot place trades.
 
 ## Look and feel
 
@@ -92,7 +92,7 @@ The app uses a warm light "editorial" theme: a paper-coloured background, serif 
 
 ## Chat saving
 
-Chats are session-only unless you tick **Save my chats on this laptop** in the sidebar. Saved chats live in `chats.json` next to the app, never in the repo. **Delete my saved chats** erases them.
+Chats are session-only unless you tick **Save my chats on this laptop** on the Settings page. Saved chats live in `chats.json` next to the app, never in the repo. **Delete my saved chats** erases them.
 
 ## Change the name or personality
 
@@ -118,7 +118,7 @@ The default model is `openai/gpt-oss-20b`, listed by Groq when this project was 
 
 ## Files
 
-- `app.py`: chat screen with streaming replies, voice, laptop files, portfolio panel, status area and consent-based chat saving
+- `app.py`: six pages with a left menu (Chat, Research, Files, Voice, Portfolio, Settings), streaming replies, and consent-based chat saving
 - `assistant.py`: settings, attachments (including Word), voice, web research with checked fetching, context budget, retries and model fallback
 - `portfolio.py`: local holdings storage with merge-add, activity log, CSV export and best-effort live prices
 - `settings.json`: editable name, personality and model
