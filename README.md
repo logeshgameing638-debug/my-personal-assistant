@@ -2,14 +2,14 @@
 
 A small Python chat app for your Windows laptop. Its starting name is Aria. You can change the name and personality in one settings file.
 
-This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics and suggests plans. It does not control your computer, open your accounts, browse the web, listen to your microphone or send reminders.
+This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics, writes code and suggests plans. You can attach text files, PDFs and images, and switch between a fast and a smarter free Groq model in the sidebar. It does not control your computer, open your accounts, browse the web, listen to your microphone or send reminders.
 
 ## Cost and privacy first
 
 - The app and Python are free. It needs internet, plus your own Groq account on the **Free** plan. Your normal internet costs still apply.
 - Groq's free plan has usage limits. If you hit one, wait. Do not add a card, upgrade to Developer or enable paid billing for this project.
 - The app cannot check your billing plan. If you use a key from a paid account, usage can cost money. Check the plan yourself before chatting.
-- Groq receives your message, the personality setting and some recent chat to generate each answer. This is not offline AI. Do not paste passwords, bank details or private documents.
+- Groq receives your message, the personality setting, some recent chat and any file or image you attach to generate each answer. This is not offline AI. Do not paste passwords, bank details or private documents.
 - Your key is not written into the project. A pasted key stays in the running session. Never send it in WhatsApp, email, a screenshot or GitHub.
 - Chat memory is temporary, not permanent. The app keeps up to 20 recent question-and-answer pairs in the session and sends only the most recent pairs that fit its small context budget. Older details may be forgotten. A restart or lost session clears it. Clear conversation removes the current app memory, not records Groq may retain.
 - Keep the app on your own laptop. It is set to localhost only. Do not expose its port to the internet or deploy this starter as a shared service.
@@ -56,6 +56,14 @@ Already have a Groq key? Use it only after checking that its account/organizatio
 
 The app also accepts `GROQ_API_KEY` from your computer's environment. This is optional; beginners should use the sidebar. If both exist, the pasted key wins. Forget pasted key does not remove an environment variable. The app does not load `.env` files.
 
+## Attachments and model choice
+
+- Use the paperclip in the chat box to attach files: text, markdown, csv, json, code, PDF (first 20 pages of text) and images (png, jpg, webp, up to 3 per message, each under 3 MB).
+- Word, Excel and zip files are not supported yet. Copy their text into a .txt file and attach that instead.
+- A photo-only PDF has no readable text and cannot be read.
+- The **AI brain** box in the sidebar switches between Fast (`openai/gpt-oss-20b`) and Smart (`openai/gpt-oss-120b`). Images are always read by the vision model `qwen/qwen3.8-27b`. All are on Groq's Free plan when this project was made.
+- Long answers (like full code) can take up to a minute. If the free limit still cuts an answer, send `continue` and the assistant goes on.
+
 ## Change the name or personality
 
 1. Stop the app with Ctrl+C.
@@ -67,20 +75,21 @@ The default model is `openai/gpt-oss-20b`, listed by Groq when this project was 
 
 ## If something goes wrong
 
-- **No module named streamlit:** Run the install command again using the same `python` or `py` command used to start the app.
+- **No module named streamlit or pypdf:** Run the install command again using the same `python` or `py` command used to start the app.
 - **Could not open requirements.txt:** You are in the wrong folder. Open Command Prompt in the folder containing `app.py`.
 - **Key or model access rejected:** Check the key in Groq, recreate it if needed, and confirm free model access. Do not share the key while asking for help.
 - **Free limit reached:** Wait and try later. The exact limits depend on the model and your Groq organization.
 - **Cannot reach Groq:** Check your internet connection. No offline answers are available.
 - **Port already in use:** Stop the previous app window with Ctrl+C. Or run `python -m streamlit run app.py --server.port 8502`.
 - **Cannot read settings.json:** Restore the original settings file. A missing comma or quote can break JSON.
+- **File too big / cannot read this file:** Check the attachment rules above and try a smaller image or a supported file type.
 
 ## Files
 
 - `app.py`: chat screen and session memory
-- `assistant.py`: settings, context budget and safe Groq request handling
+- `assistant.py`: settings, attachments, context budget and safe Groq request handling
 - `settings.json`: editable name, personality and model
-- `requirements.txt`: the one Python package needed
+- `requirements.txt`: the Python packages needed
 - `START.bat`: Windows launcher after first install
 - `.streamlit/config.toml`: local-only server and theme
 - `.gitignore`: prevents common local files from being committed
