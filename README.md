@@ -2,7 +2,7 @@
 
 A small Python chat app for your Windows laptop. Its starting name is Aria. You can change the name and personality in one settings file.
 
-This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics, writes code and suggests plans. You can attach text files, PDFs and images, talk to it by voice, hear answers read aloud, run basic web research, read files you point it at on your laptop, and track a stock portfolio (analysis only, no trades). You can switch between three free Groq models in the sidebar. It does not control your computer, open your accounts, listen in the background or send reminders.
+This is an independent starter project, not a copy of another assistant. It chats, helps with writing, explains topics, writes code and suggests plans. Replies stream onto the screen as they are written. You can attach text files, Word documents, PDFs and images, talk to it by voice, hear answers read aloud, run basic web research, read files you point it at on your laptop, and track a stock portfolio (analysis only, no trades). You can switch between three free Groq models in the sidebar, and if one is unavailable the app tries another free model automatically. It does not control your computer, open your accounts, listen in the background or send reminders.
 
 ## Cost and privacy first
 
@@ -14,9 +14,9 @@ This is an independent starter project, not a copy of another assistant. It chat
 - Web research is basic: it searches and reads a few public pages, or uses Groq's browser search when your free key allows it. It can be wrong or blocked. Always check the listed sources yourself.
 - The microphone records only when you press the mic button. Nothing listens in the background.
 - Your key is not written into the project. A pasted key stays in the running session. Never send it in WhatsApp, email, a screenshot or GitHub.
-- Chat memory is temporary, not permanent. The app keeps up to 20 recent question-and-answer pairs in the session and sends only the most recent pairs that fit its small context budget. Older details may be forgotten. A restart or lost session clears it. Clear conversation removes the current app memory, not records Groq may retain.
+- Chat memory is temporary by default. The app keeps up to 20 recent question-and-answer pairs in the session and sends only the most recent pairs that fit its small context budget. Older details may be forgotten. A restart or lost session clears it. If you tick **Save my chats on this laptop**, chats are stored in `chats.json` on your laptop only (kept out of the repo by `.gitignore`), and **Delete my saved chats** removes them. Clear conversation removes the current app memory, not records Groq may retain.
 - Keep the app on your own laptop. It is set to localhost only. Do not expose its port to the internet or deploy this starter as a shared service.
-- AI can be wrong. It has no live web search here. Check important answers yourself.
+- AI can be wrong. Research mode adds basic web search with sources, but it is not deep research and can miss or misread pages. Check important answers yourself.
 
 ## 1. Install Python once
 
@@ -61,16 +61,18 @@ The app also accepts `GROQ_API_KEY` from your computer's environment. This is op
 
 ## Attachments and model choice
 
-- Use the paperclip in the chat box to attach files: text, markdown, csv, json, code, PDF (first 20 pages of text) and images (png, jpg, webp, up to 3 per message, each under 3 MB).
-- Word, Excel and zip files are not supported yet. Copy their text into a .txt file and attach that instead.
+- Use the paperclip in the chat box to attach files: text, markdown, csv, json, code, Word (.docx text), PDF (first 20 pages of text) and images (png, jpg, webp, up to 3 per message, each under 3 MB).
+- Excel and zip files are not supported yet. Copy their text into a .txt file and attach that instead.
 - A photo-only PDF has no readable text and cannot be read.
 - The **AI brain** box in the sidebar switches between Fast (`openai/gpt-oss-20b`), Smart (`openai/gpt-oss-120b`) and Qwen 3.8 (`qwen/qwen3.8-27b`, good for many languages). Images are always read by the vision model `qwen/qwen3.8-27b`. All are on Groq's Free plan when this project was made.
-- Long answers (like full code) can take up to a minute. If the free limit still cuts an answer, send `continue` and the assistant goes on.
+- Answers stream as they are written. Long answers (like full code) can take up to a minute. If the free limit still cuts an answer, send `continue` and the assistant goes on.
+- **Regenerate last answer** removes the last exchange and asks again. Attachments are not re-sent with a regenerated question.
+- If the model you picked is not available to your key, the app automatically tries the other free models before giving up.
 
 ## Voice
 
-- Press **Speak instead of typing**, talk, then stop. Your words become the next message.
-- Tick **Read answers aloud** to hear replies. Voice uses Groq's free Whisper and Orpheus models; free limits apply, and long replies are read only up to about the first 1200 characters.
+- Press **Speak instead of typing**, talk, then stop. Your words become the next message. Each recording is transcribed once; it is not re-sent on every screen refresh.
+- Tick **Read answers aloud** to hear replies, and pick one of the three voices (troy, hannah, austin). Voice uses Groq's free Whisper and Orpheus models; free limits apply, the voices speak English only, and long replies are read only up to about the first 1200 characters.
 
 ## Web research
 
@@ -82,7 +84,15 @@ In **Laptop files**, type a path such as `C:\Users\vijay\Documents`. The app lis
 
 ## Portfolio
 
-In **My portfolio**, add holdings as symbol, quantity and buy price (use NSE symbols like `RELIANCE.NS`). Press **Refresh prices and P&L** for live values, and **Ask the assistant about my portfolio** for a simple analysis. This is not financial advice and cannot place trades.
+In **My portfolio**, add holdings as symbol, quantity and buy price (use NSE symbols like `RELIANCE.NS`). Adding a symbol you already hold **merges** the buys: quantities add up and the buy price becomes the weighted average - nothing is silently overwritten. Press **Refresh prices and P&L** for live values. If a live price is missing, that holding is excluded from the totals and clearly marked; a missing price is never shown as a loss. The panel also shows percentage returns, an allocation chart, and CSV downloads of your holdings and the activity log. The activity log starts from this upgrade - buys you made before it are not in it, and the app never invents past trades. Your original `portfolio.json` is copied once to `portfolio.backup.json` before the first change. **Ask the assistant about my portfolio** sends the holdings summary to Groq for a simple analysis. This is not financial advice and cannot place trades.
+
+## Look and feel
+
+The app uses a dark theme by default, set in `.streamlit/config.toml`. To switch to a light theme, open that file in Notepad, change `base = "dark"` to `base = "light"`, save and restart the app.
+
+## Chat saving
+
+Chats are session-only unless you tick **Save my chats on this laptop** in the sidebar. Saved chats live in `chats.json` next to the app, never in the repo. **Delete my saved chats** erases them.
 
 ## Change the name or personality
 
@@ -108,9 +118,9 @@ The default model is `openai/gpt-oss-20b`, listed by Groq when this project was 
 
 ## Files
 
-- `app.py`: chat screen, voice, laptop files, portfolio panel and session memory
-- `assistant.py`: settings, attachments, voice, web research, context budget and safe Groq request handling
-- `portfolio.py`: local holdings storage and best-effort live prices
+- `app.py`: chat screen with streaming replies, voice, laptop files, portfolio panel, status area and consent-based chat saving
+- `assistant.py`: settings, attachments (including Word), voice, web research with checked fetching, context budget, retries and model fallback
+- `portfolio.py`: local holdings storage with merge-add, activity log, CSV export and best-effort live prices
 - `settings.json`: editable name, personality and model
 - `requirements.txt`: the Python packages needed
 - `START.bat`: Windows launcher after first install
