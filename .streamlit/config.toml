@@ -3,5 +3,8 @@ address = "127.0.0.1"
 headless = false
 
 [theme]
-base = "light"
-primaryColor = "#2563eb"
+base = "dark"
+primaryColor = "#4f8ef7"
+backgroundColor = "#0b0f17"
+secondaryBackgroundColor = "#141b29"
+textColor = "#e8edf5"
