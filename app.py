@@ -16,14 +16,56 @@ CHATS_PATH = Path(__file__).with_name("chats.json")
 
 st.set_page_config(page_title="Aria - Personal AI Assistant", layout="centered")
 
-# Selective premium styling on top of the dark theme from .streamlit/config.toml.
+# Editorial light styling on top of the warm theme from .streamlit/config.toml.
+# Original CSS written for this app (no third-party code); direction inspired by the
+# MIT-licensed jmedia65/awesome-streamlit-themes "Editorial" preset (serif display,
+# warm paper background). System fonts only, so nothing extra downloads on the laptop.
 st.markdown("""<style>
-[data-testid="stChatMessage"] {border-radius: 14px; padding: 10px 14px; margin-bottom: 6px;
-    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);}
-section[data-testid="stSidebar"] {background: linear-gradient(180deg, #101623 0%, #0b0f17 100%);}
-section[data-testid="stSidebar"] .stButton button {border-radius: 10px;}
-.stButton button {border-radius: 10px;}
-[data-testid="stExpander"] {border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);}
+/* Serif display headings over a warm paper canvas */
+h1, h2, h3, [data-testid="stHeading"] {font-family: Georgia, "Times New Roman", serif !important;}
+
+/* Masthead */
+.aria-eyebrow {font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: #78716c; margin-bottom: 2px;}
+.aria-wordmark {font-family: Georgia, "Times New Roman", serif; font-size: 46px;
+    font-weight: 700; color: #1c1917; line-height: 1.05;}
+.aria-tagline {font-size: 15px; color: #57534e; margin-top: 4px;}
+.aria-rule {height: 3px; width: 72px; background: #c2410c;
+    margin: 14px 0 6px 0; border-radius: 2px;}
+@media (max-width: 480px) {.aria-wordmark {font-size: 34px;}}
+
+/* Sidebar: warm rail with serif brand */
+section[data-testid="stSidebar"] {background: #f6f1e9; border-right: 1px solid #e7e0d4;}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {font-family: Georgia, "Times New Roman", serif !important;}
+.aria-side-brand {font-family: Georgia, "Times New Roman", serif; font-size: 27px;
+    font-weight: 700; letter-spacing: .14em; color: #1c1917;}
+.aria-side-sub {font-size: 12px; color: #78716c; margin-bottom: 10px;}
+.aria-side-status {font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: #a8a29e; margin-top: 4px;}
+
+/* Chat turns as paper cards */
+[data-testid="stChatMessage"] {background: #ffffff; border: 1px solid #e9e2d6;
+    border-radius: 14px; padding: 10px 14px; margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(28,25,23,.05);}
+
+/* Pill buttons and rounded inputs */
+.stButton button, [data-testid="stDownloadButton"] button {border-radius: 999px;
+    border: 1px solid #d6cdbd; background: #ffffff; color: #292524;}
+.stButton button:hover, [data-testid="stDownloadButton"] button:hover {
+    border-color: #c2410c; color: #c2410c;}
+.stTextInput input, .stSelectbox div[data-baseweb="select"], .stChatInput textarea {
+    border-radius: 10px;}
+
+/* Expanders and alerts as cards */
+[data-testid="stExpander"] {background: #ffffff; border: 1px solid #e9e2d6; border-radius: 14px;}
+[data-testid="stExpander"] summary {font-family: Georgia, "Times New Roman", serif; font-size: 1.05rem;}
+[data-testid="stAlert"] {border-radius: 12px;}
+
+/* Empty-state */
+.aria-empty-head {font-family: Georgia, "Times New Roman", serif; font-size: 24px;
+    color: #1c1917; margin: 6px 0 2px 0;}
+.aria-empty-sub {font-size: 14px; color: #78716c; margin-bottom: 10px;}
 </style>""", unsafe_allow_html=True)
 
 try:
@@ -67,8 +109,8 @@ def forget_key():
 
 
 with st.sidebar:
-    st.title("ARIA")
-    st.caption("Your personal AI assistant")
+    st.markdown('<div class="aria-side-brand">ARIA</div>'
+                '<div class="aria-side-sub">Your personal AI assistant</div>', unsafe_allow_html=True)
     st.caption("Keep your Groq account on the Free plan. Never add billing for this app.")
     pasted_key = st.text_input("Groq API key", type="password", key="groq_key",
                                help="Paste it here on your own laptop, never in a message or GitHub file.")
@@ -110,7 +152,7 @@ with st.sidebar:
     st.button("Forget pasted key", width="stretch", on_click=forget_key)
     st.caption("An environment-variable key stays until you remove it from your computer.")
     st.divider()
-    st.subheader("Status")
+    st.markdown('<div class="aria-side-status">Status</div>', unsafe_allow_html=True)
     try:
         holding_count = len(load_portfolio())
     except PortfolioError:
@@ -122,12 +164,32 @@ with st.sidebar:
                + "  |  Chat this session: " + str(len(st.session_state.messages)) + " messages"
                + "  |  Chat saving: " + ("on" if save_chats_on else "off"))
 
-st.title(settings["name"] + ", your personal assistant")
-st.caption("Chat, files, images, voice and basic web research. Runs on your laptop, with online answers from Groq.")
+st.markdown('<div class="aria-eyebrow">Personal AI assistant &middot; runs on your laptop</div>'
+            '<div class="aria-wordmark">' + settings["name"] + '</div>'
+            '<div class="aria-tagline">Chat, files, images, voice and basic web research, '
+            'with online answers from Groq\'s free tier.</div>'
+            '<div class="aria-rule"></div>', unsafe_allow_html=True)
 st.info("No full laptop control, account access or background listening. Attachments, voice and web results go to Groq only to answer that message. Do not send secrets or sensitive personal data.")
 if not st.session_state.messages:
-    st.markdown("### What would you like help with?")
-    st.write("Try: Explain Python simply, summarize an attached PDF, describe an image, or tick Research and ask about today's news.")
+    st.markdown('<div class="aria-empty-head">What would you like help with?</div>'
+                '<div class="aria-empty-sub">Pick a starter below, or type your own message. '
+                'Tick "Research the web first" in the sidebar for questions about the news.</div>',
+                unsafe_allow_html=True)
+    starters_disabled = not key or not free_ok
+    s1, s2 = st.columns(2)
+    if s1.button("Explain Python simply", disabled=starters_disabled, width="stretch"):
+        st.session_state["queued_prompt"] = "Explain Python simply, like I am new to coding."
+        st.rerun()
+    if s2.button("Summarize an attached PDF", disabled=starters_disabled, width="stretch"):
+        st.session_state["queued_prompt"] = "Please summarize the PDF I attach with this message."
+        st.rerun()
+    s3, s4 = st.columns(2)
+    if s3.button("Describe an image", disabled=starters_disabled, width="stretch"):
+        st.session_state["queued_prompt"] = "Please describe the image I attach with this message."
+        st.rerun()
+    if s4.button("What is in the news today?", disabled=starters_disabled, width="stretch"):
+        st.session_state["queued_prompt"] = "What is in the news today? Give me a short roundup."
+        st.rerun()
 
 # --- Voice input: record once, it becomes your next message ---
 voice_prompt = ""
