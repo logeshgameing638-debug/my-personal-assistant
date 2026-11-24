@@ -76,7 +76,7 @@ The app also accepts `GROQ_API_KEY` from your computer's environment. This is op
 
 ## Web research
 
-Open the **Research** page, type a question and press **Research this question**. It is slower and uses more of the free limits. The answer ends with the sources it actually used. Press **Save this exchange to my chat history** to continue from it in Chat.
+Open the **Research** page, type a question and press **Research this question**. You can attach files (including PDF, Word, text and images) to the question, and a file you picked on the Files page is included too. Research is slower and uses more of the free limits. The answer ends with the sources it actually used. Press **Save this exchange to my chat history** to continue from it in Chat.
 
 ## Laptop files
 
