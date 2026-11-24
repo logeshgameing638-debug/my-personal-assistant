@@ -14,7 +14,7 @@ from portfolio import (PortfolioError, add_holding, allocation, holdings_csv,
 
 CHATS_PATH = Path(__file__).with_name("chats.json")
 
-st.set_page_config(page_title="Aria - Personal AI Assistant", page_icon="✨", layout="centered")
+st.set_page_config(page_title="Aria - Personal AI Assistant", layout="centered")
 
 # Selective premium styling on top of the dark theme from .streamlit/config.toml.
 st.markdown("""<style>
@@ -67,7 +67,7 @@ def forget_key():
 
 
 with st.sidebar:
-    st.title("✨ ARIA")
+    st.title("ARIA")
     st.caption("Your personal AI assistant")
     st.caption("Keep your Groq account on the Free plan. Never add billing for this app.")
     pasted_key = st.text_input("Groq API key", type="password", key="groq_key",
@@ -122,7 +122,7 @@ with st.sidebar:
                + "  |  Chat this session: " + str(len(st.session_state.messages)) + " messages"
                + "  |  Chat saving: " + ("on" if save_chats_on else "off"))
 
-st.title("✨ " + settings["name"] + ", your personal assistant")
+st.title(settings["name"] + ", your personal assistant")
 st.caption("Chat, files, images, voice and basic web research. Runs on your laptop, with online answers from Groq.")
 st.info("No full laptop control, account access or background listening. Attachments, voice and web results go to Groq only to answer that message. Do not send secrets or sensitive personal data.")
 if not st.session_state.messages:
