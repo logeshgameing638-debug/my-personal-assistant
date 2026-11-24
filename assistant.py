@@ -288,11 +288,13 @@ def get_reply(key, settings, history, prompt, uploads=(), model=None, on_token=N
         full_prompt = "\n\n".join(text_parts) + "\n\n" + prompt
 
     if images:
-        # Images need the vision model. File text travels with the same message.
+        # Images need the vision model. File text and recent chat travel with the same message.
         content = [{"type": "text", "text": full_prompt}]
         content += [{"type": "image_url", "image_url": {"url": url}} for url in images]
-        messages = [{"role": "system", "content": settings["personality"]},
-                    {"role": "user", "content": content}]
+        recent = [m for m in history[-6:]
+                  if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)]
+        messages = [{"role": "system", "content": settings["personality"]}] + recent + [
+            {"role": "user", "content": content}]
         reply = complete_with_continuation(key, settings["vision_model"], messages)
     else:
         messages = build_messages(settings["personality"], history, full_prompt)
