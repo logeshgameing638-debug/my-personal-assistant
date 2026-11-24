@@ -97,7 +97,7 @@ with st.expander("Laptop files (only what you choose)"):
 
 # --- Portfolio: local holdings, analysis only ---
 with st.expander("My portfolio (analysis only, no trades)"):
-    st.caption("Saved only on this laptop in portfolio.json, never uploaded. Prices can be delayed; check your broker app before acting.")
+    st.caption("Holdings are stored only on this laptop in portfolio.json - not in the cloud or on GitHub. Prices can be delayed; check your broker app before acting.")
     try:
         holdings = load_portfolio()
     except PortfolioError as error:
@@ -131,6 +131,7 @@ with st.expander("My portfolio (analysis only, no trades)"):
                 totals["invested"], totals["current"], totals["pnl"]))
             if totals["missing"]:
                 st.caption("No live price for: " + ", ".join(totals["missing"]) + ". Use NSE symbols like RELIANCE.NS.")
+            st.caption("The button below sends your holdings summary to Groq for analysis. Nothing else is sent.")
             if st.button("Ask the assistant about my portfolio"):
                 st.session_state["queued_prompt"] = (
                     portfolio_summary_text(holdings)
