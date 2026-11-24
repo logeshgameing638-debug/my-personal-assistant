@@ -106,17 +106,23 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
+# Streamlit deletes widget-keyed state when a page unmounts, so every setting is
+# mirrored into a plain session key (the *_saved names), which survives page changes.
 def current_key():
-    return (st.session_state.get("groq_key", "").strip()
+    return (st.session_state.get("groq_key_saved", "").strip()
             or os.environ.get("GROQ_API_KEY", "").strip())
 
 
 def assistant_ready():
-    return bool(current_key()) and bool(st.session_state.get("free_ok"))
+    return bool(current_key()) and bool(st.session_state.get("free_ok_saved"))
+
+
+def chat_saving_on():
+    return bool(st.session_state.get("save_chats_on_saved"))
 
 
 def forget_key():
-    st.session_state["groq_key"] = ""
+    st.session_state["groq_key_saved"] = ""
 
 
 def queue_and_open_chat(text):
@@ -175,7 +181,7 @@ def page_chat():
             last_pair = st.session_state.messages[-2:]
             if [m["role"] for m in last_pair] == ["user", "assistant"]:
                 st.session_state.messages = st.session_state.messages[:-2]
-                if st.session_state.get("save_chats_on"):
+                if chat_saving_on():
                     save_chats(st.session_state.messages)
                 st.session_state["queued_prompt"] = last_pair[0]["content"]
                 st.session_state.pop("last_audio", None)
@@ -239,9 +245,9 @@ def page_chat():
                               model=chat_model, on_token=on_token)
             placeholder.empty()
             voice_audio = None
-            if st.session_state.get("voice_on"):
+            if st.session_state.get("voice_on_saved"):
                 try:
-                    voice_audio = speak_text(key, reply, voice=st.session_state.get("voice_name", "troy"))
+                    voice_audio = speak_text(key, reply, voice=st.session_state.get("voice_name_saved", "troy"))
                 except ChatError as voice_error:
                     st.caption(str(voice_error))
         except ChatError as error:
@@ -257,7 +263,7 @@ def page_chat():
                 {"role": "user", "content": shown}, {"role": "assistant", "content": reply}])
             # Bound session memory too, so very long chats do not grow forever.
             st.session_state.messages = st.session_state.messages[-40:]
-            if st.session_state.get("save_chats_on"):
+            if chat_saving_on():
                 save_chats(st.session_state.messages)
             if voice_audio:
                 st.session_state["last_audio"] = voice_audio
@@ -278,11 +284,22 @@ def page_research():
         st.caption("Add your free Groq key on the Settings page and tick the Free-plan box to use research.")
     query = st.text_input("Question to research", placeholder="What changed in Indian tax rules this year?",
                           disabled=not ready)
+    picked = st.file_uploader("Attach files for this question (optional)", type=ALL_EXTENSIONS,
+                              accept_multiple_files=True, disabled=not ready)
+    pending = st.session_state.get("path_attachment")
+    if pending:
+        st.caption("The file you picked on the Files page (" + pending[0] + ") is included in this research run too.")
     if st.button("Research this question", disabled=not ready or not query.strip()):
+        uploads = [(f.name, f.getvalue()) for f in (picked or [])]
+        if pending:
+            uploads = uploads + [pending]
         with st.spinner("Researching..."):
             try:
-                reply = research_reply(current_key(), settings, [], query.strip(), [])
+                reply = research_reply(current_key(), settings, [], query.strip(), uploads)
                 st.session_state["research_result"] = (query.strip(), reply)
+                # The research run consumed the Files-page attachment.
+                if pending:
+                    st.session_state.pop("path_attachment", None)
             except ChatError as error:
                 st.error(str(error))
     result = st.session_state.get("research_result")
@@ -294,7 +311,7 @@ def page_research():
                 {"role": "user", "content": result[0]},
                 {"role": "assistant", "content": result[1]}])
             st.session_state.messages = st.session_state.messages[-40:]
-            if st.session_state.get("save_chats_on"):
+            if chat_saving_on():
                 save_chats(st.session_state.messages)
             st.session_state.pop("research_result", None)
             st.success("Saved. Open the Chat page to continue from it.")
@@ -321,14 +338,14 @@ def page_files():
                     st.error("That file is too big (over 5 MB).")
                 elif st.button("Attach this file to my next message"):
                     st.session_state["path_attachment"] = (target.name, target.read_bytes())
-                    st.success("Attached " + target.name + ". It will go with your next chat message.")
+                    st.success("Attached " + target.name + ". It will go with your next chat message or research question.")
             else:
                 st.warning("No such file or folder. Check the path.")
         except (OSError, PermissionError):
             st.error("Windows would not let the app read that path.")
     pending = st.session_state.get("path_attachment")
     if pending:
-        st.info("Ready to send with your next chat message: " + pending[0])
+        st.info("Ready to send with your next chat message or research question: " + pending[0])
         if st.button("Remove this attachment"):
             st.session_state.pop("path_attachment", None)
             st.rerun()
@@ -342,9 +359,16 @@ def page_voice():
     st.caption("Voice in: free Whisper on Groq, understands Tamil and English. "
                "Voice out: free Orpheus on Groq, English only.")
     ready = assistant_ready()
-    st.checkbox("Read chat answers aloud", key="voice_on")
-    if st.session_state.get("voice_on"):
-        st.selectbox("Voice", ["troy", "hannah", "austin"], key="voice_name")
+    voices = ["troy", "hannah", "austin"]
+    voice_on = st.checkbox("Read chat answers aloud", key="voice_on",
+                           value=bool(st.session_state.get("voice_on_saved")))
+    st.session_state["voice_on_saved"] = voice_on
+    if voice_on:
+        saved_voice = st.session_state.get("voice_name_saved", "troy")
+        voice_name = st.selectbox("Voice", voices,
+                                  index=voices.index(saved_voice) if saved_voice in voices else 0,
+                                  key="voice_name")
+        st.session_state["voice_name_saved"] = voice_name
     st.divider()
     if not ready:
         st.caption("Add your free Groq key on the Settings page and tick the Free-plan box to use voice.")
@@ -456,26 +480,36 @@ def page_settings():
     page_header("Settings", "Your free Groq key, the AI brain, chat saving and app status.")
     st.subheader("Groq key")
     st.caption("Keep your Groq account on the Free plan. Never add billing for this app.")
-    st.text_input("Groq API key", type="password", key="groq_key",
-                  help="Paste it here on your own laptop, never in a message or GitHub file.")
+    pasted = st.text_input("Groq API key", type="password", key="groq_key",
+                           value=st.session_state.get("groq_key_saved", ""),
+                           help="Paste it here on your own laptop, never in a message or GitHub file.")
+    st.session_state["groq_key_saved"] = pasted
     key = current_key()
     st.caption("Key ready" if key else "Paste a key above, or set GROQ_API_KEY.")
-    st.checkbox("I checked: my Groq account is on the Free plan", key="free_ok")
+    free_ok = st.checkbox("I checked: my Groq account is on the Free plan", key="free_ok",
+                          value=bool(st.session_state.get("free_ok_saved")))
+    st.session_state["free_ok_saved"] = free_ok
     st.caption("The app cannot check your billing plan. A paid account can incur charges.")
     st.divider()
     st.subheader("AI brain")
     model_choices = {"Fast (gpt-oss-20b)": "openai/gpt-oss-20b",
                      "Smart (gpt-oss-120b)": "openai/gpt-oss-120b",
                      "Qwen 3.8 (many languages)": "qwen/qwen3.8-27b"}
-    picked = st.selectbox("AI brain (all free on Groq)", list(model_choices),
+    labels = list(model_choices)
+    saved_label = st.session_state.get("model_pick_label_saved", labels[0])
+    picked = st.selectbox("AI brain (all free on Groq)", labels,
+                          index=labels.index(saved_label) if saved_label in labels else 0,
                           key="model_pick_label")
+    st.session_state["model_pick_label_saved"] = picked
     st.session_state["model_pick"] = model_choices[picked]
     st.caption("Images are always read by " + settings["vision_model"] + ". Voice settings live on the Voice page.")
     st.divider()
     st.subheader("Chat saving")
-    st.checkbox("Save my chats on this laptop", key="save_chats_on",
-                help="Off: chats vanish when the app restarts. On: stored in chats.json on this laptop only, never in the repo.")
-    if st.session_state.get("save_chats_on"):
+    save_on = st.checkbox("Save my chats on this laptop", key="save_chats_on",
+                          value=bool(st.session_state.get("save_chats_on_saved")),
+                          help="Off: chats vanish when the app restarts. On: stored in chats.json on this laptop only, never in the repo.")
+    st.session_state["save_chats_on_saved"] = save_on
+    if chat_saving_on():
         if not st.session_state.get("chats_loaded"):
             st.session_state.messages = load_chats()
             st.session_state["chats_loaded"] = True
@@ -487,7 +521,7 @@ def page_settings():
     if st.button("Clear conversation", width="stretch"):
         st.session_state.messages = []
         st.session_state.pop("last_audio", None)
-        if st.session_state.get("save_chats_on"):
+        if chat_saving_on():
             save_chats([])
         st.rerun()
     st.button("Forget pasted key", width="stretch", on_click=forget_key)
@@ -500,10 +534,10 @@ def page_settings():
         holding_count = 0
     st.caption("Groq key: " + ("ready" if key else "missing")
                + "  |  Brain: " + (st.session_state.get("model_pick") or "openai/gpt-oss-20b")
-               + "  |  Voice replies: " + ("on" if st.session_state.get("voice_on") else "off"))
+               + "  |  Voice replies: " + ("on" if st.session_state.get("voice_on_saved") else "off"))
     st.caption("Holdings: " + str(holding_count)
                + "  |  Chat this session: " + str(len(st.session_state.messages)) + " messages"
-               + "  |  Chat saving: " + ("on" if st.session_state.get("save_chats_on") else "off"))
+               + "  |  Chat saving: " + ("on" if chat_saving_on() else "off"))
 
 
 # ------------------------------------------------------------------ Shell
