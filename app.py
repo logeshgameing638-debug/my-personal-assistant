@@ -110,14 +110,16 @@ with st.expander("My portfolio (analysis only, no trades)"):
     if st.button("Add / update holding"):
         try:
             holdings = add_holding(new_symbol, new_qty, new_buy)
+            st.session_state.pop("pf_result", None)
             st.success("Saved " + new_symbol.strip().upper())
         except PortfolioError as error:
             st.error(str(error))
     if holdings:
         if st.button("Refresh prices and P&L"):
-            st.session_state["pf_refresh"] = True
-        if st.session_state.get("pf_refresh"):
-            lines, totals = pnl_table(holdings)
+            with st.spinner("Getting prices..."):
+                st.session_state["pf_result"] = pnl_table(holdings)
+        if st.session_state.get("pf_result"):
+            lines, totals = st.session_state["pf_result"]
             for line in lines:
                 if line["price"] is None:
                     st.write("%s — %s shares @ %.2f — live price unavailable" % (
@@ -138,6 +140,7 @@ with st.expander("My portfolio (analysis only, no trades)"):
         drop = st.selectbox("Remove a holding", [""] + [r["symbol"] for r in holdings])
         if drop and st.button("Remove " + drop):
             holdings = remove_holding(drop)
+            st.session_state.pop("pf_result", None)
             st.rerun()
 
 for message in st.session_state.messages:
