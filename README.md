@@ -88,7 +88,7 @@ In **My portfolio**, add holdings as symbol, quantity and buy price (use NSE sym
 
 ## Look and feel
 
-The app uses a dark theme by default, set in `.streamlit/config.toml`. To switch to a light theme, open that file in Notepad, change `base = "dark"` to `base = "light"`, save and restart the app.
+The app uses a warm light "editorial" theme: a paper-coloured background, serif headings, and card-style chat. The colours are set in `.streamlit/config.toml` and the styling in `app.py`; both use system fonts only, so nothing extra downloads. To switch to a plain dark theme, open the config file in Notepad, change `base = "light"` to `base = "dark"`, save and restart the app.
 
 ## Chat saving
 
